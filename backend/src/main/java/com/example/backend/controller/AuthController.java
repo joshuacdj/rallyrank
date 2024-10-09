@@ -12,8 +12,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
@@ -40,6 +44,11 @@ public class AuthController {
             .thenCompose(user -> {
                 if (user != null) {
                     logger.info("User authenticated successfully: {}", user.getUserName());
+
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                    user.getUserName(), null, Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")) // added
+                    );
+                    SecurityContextHolder.getContext().setAuthentication(authToken);
                     
                     HttpSession session = request.getSession(true);
 

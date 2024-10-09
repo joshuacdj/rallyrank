@@ -2,11 +2,13 @@ package com.example.backend.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.session.HttpSessionEventPublisher;
 
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -31,18 +33,18 @@ public class SecurityConfig {
                 .requestMatchers("/users/**").hasRole("USER")
                 .anyRequest().authenticated()
             )
-            .exceptionHandling(exceptions -> exceptions
-                .authenticationEntryPoint((request, response, authException) -> {
-                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    response.getWriter().write("{\"error\": \"User not authenticated\", \"redirect\": \"/auth/login\"}");
-                })
-            )
             .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
             )
-            .csrf(csrf -> csrf.ignoringRequestMatchers("/auth/**", "/otp/**", "/users/**", "/admins/**"));
-
+            .csrf(csrf -> csrf.disable())  // Be cautious with this in production
+            .cors(Customizer.withDefaults());
+            
         return http.build();
+    }
+
+    @Bean
+    public HttpSessionEventPublisher httpSessionEventPublisher() {
+        return new HttpSessionEventPublisher();
     }
 
     /**

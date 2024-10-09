@@ -20,27 +20,31 @@ public class OtpVerificationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         System.out.println("OtpVerificationFilter: Processing request for " + path);
 
-        if (path.startsWith("/css/") || path.startsWith("/js/") || path.startsWith("/images/") || 
-            path.equals("/users/login") || path.equals("/admins/login") || 
-            path.equals("/otp/verify") || path.equals("/otp/send")) {
+        if (path.startsWith("/auth/") || path.startsWith("/otp/")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        HttpSession session = request.getSession(false);
+        
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        HttpSession session = request.getSession(false);
 
-        if (auth != null && auth.isAuthenticated() && session != null) {
-            Boolean otpVerified = (Boolean) session.getAttribute("otpVerified");
-            System.out.println("OtpVerificationFilter: OTP verified = " + otpVerified);
-            if (otpVerified == null || !otpVerified) {
-                System.out.println("OtpVerificationFilter: OTP not verified, sending 401 Unauthorized");
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                response.getWriter().write("{\"error\": \"OTP verification required\", \"redirect\": \"/otp/verify\"}");
-                return;
-            }
+        if (auth == null || !auth.isAuthenticated() || session == null) {
+            System.out.println("OtpVerificationFilter: User not authenticated");
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("{\"error\": \"User not authenticated\", \"redirect\": \"/auth/login\"}");
+            return;
         }
-
+    
+        Boolean otpVerified = (Boolean) session.getAttribute("otpVerified");
+        System.out.println("OtpVerificationFilter: OTP verified = " + otpVerified);
+        if (otpVerified == null || !otpVerified) {
+            System.out.println("OtpVerificationFilter: OTP not verified, sending 401 Unauthorized");
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.getWriter().write("{\"error\": \"OTP verification required\", \"redirect\": \"/otp/verify\"}");
+            return;
+        }
+    
         filterChain.doFilter(request, response);
     }
 }

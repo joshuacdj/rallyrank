@@ -1,6 +1,7 @@
 package com.example.backend.controller;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.Collections;
 import java.util.Map;
 
 import com.example.backend.service.EmailService;
@@ -12,7 +13,11 @@ import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -50,6 +55,13 @@ public class OtpController {
             .thenApply(isValid -> {
                 if (isValid) {
                     session.setAttribute("otpVerified", true);
+
+                    Authentication newAuth = new UsernamePasswordAuthenticationToken(
+                        username, null, Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
+                    );
+                    SecurityContextHolder.getContext().setAuthentication(newAuth);
+                    session.setAttribute("SPRING_SECURITY_CONTEXT", SecurityContextHolder.getContext());
+                    
                     System.out.println("OTP verified successfully for user: " + username);
                     return ResponseEntity.ok().body(Map.of("message", "OTP verified successfully", "redirect", "/users/home"));
                 } else {
