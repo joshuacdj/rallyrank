@@ -1,8 +1,6 @@
 package com.example.backend.controller;
 
 import com.example.backend.model.User;
-import com.example.backend.service.EmailService;
-import com.example.backend.service.OtpService;
 import com.example.backend.service.UserService;
 
 
@@ -27,7 +25,7 @@ public class UsersController {
     private final UserService userService;
 
     @Autowired
-    public UsersController(UserService userService, OtpService otpService, EmailService emailService) {
+    public UsersController(UserService userService) {
         this.userService = userService;
     }
 

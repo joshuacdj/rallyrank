@@ -6,11 +6,8 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
 
-import jakarta.servlet.http.HttpServletResponse;
 
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -26,9 +23,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .addFilterAfter(new OtpVerificationFilter(), UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(requests -> requests
-                .requestMatchers("/otp/**", "/css/**", "/js/**", "/images/**", "/auth/**").permitAll()
+                .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()
                 .requestMatchers("/admins/**").hasRole("ADMIN")
                 .requestMatchers("/users/**").hasRole("USER")
                 .anyRequest().authenticated()
@@ -45,14 +41,6 @@ public class SecurityConfig {
     @Bean
     public HttpSessionEventPublisher httpSessionEventPublisher() {
         return new HttpSessionEventPublisher();
-    }
-
-    /**
-     * Provides a custom authentication success handler.
-     */
-    @Bean
-    public AuthenticationSuccessHandler customSuccessHandler() {
-        return new CustomAuthenticationSuccessHandler();
     }
 
     /**
