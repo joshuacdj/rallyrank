@@ -1,12 +1,10 @@
 package com.example.backend.controller;
 
-import com.example.backend.model.LoginRequest;
 import com.example.backend.model.User;
 import com.example.backend.service.EmailService;
 import com.example.backend.service.OtpService;
 import com.example.backend.service.UserService;
 
-import jakarta.servlet.http.HttpSession;
 
 import com.example.backend.exception.UserNotFoundException;
 
@@ -27,14 +25,10 @@ import java.util.concurrent.CompletableFuture;
 public class UsersController {
 
     private final UserService userService;
-    private final OtpService otpService;
-    private final EmailService emailService;
 
     @Autowired
     public UsersController(UserService userService, OtpService otpService, EmailService emailService) {
         this.userService = userService;
-        this.otpService = otpService;
-        this.emailService = emailService;
     }
 
     private static final Logger logger = LoggerFactory.getLogger(UsersController.class);
@@ -245,33 +239,4 @@ public class UsersController {
         }
     }
 
-    @PostMapping("/login")
-    public CompletableFuture<ResponseEntity<Map<String, String>>> login(@RequestBody LoginRequest loginRequest, HttpSession session) {
-        logger.info("Login attempt for user: {}", loginRequest.getUsername());
-        return userService.authenticateUser(loginRequest.getUsername(), loginRequest.getPassword())
-            .thenCompose(user -> {
-                if (user != null) {
-                    logger.info("User authenticated successfully: {}", user.getUserName());
-                    return otpService.generateOTP(user.getUserName())
-                        .thenCompose(otp -> emailService.sendOtpEmail(user.getEmail(), otp))
-                        .thenApply(emailSent -> {
-                            if (emailSent) {
-                                session.setAttribute("USER_ID", user.getId());
-                                session.setAttribute("needOtpVerification", true);
-                                return ResponseEntity.ok(Map.of("message", "OTP sent successfully", "redirect", "/otp/verify"));
-                            } else {
-                                logger.error("Failed to send OTP for user: {}", user.getUserName());
-                                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Failed to send OTP"));
-                            }
-                        });
-                } else {
-                    logger.warn("Authentication failed for user: {}", loginRequest.getUsername());
-                    return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid credentials")));
-                }
-            })
-            .exceptionally(e -> {
-                logger.error("Unexpected error during login for user: {}", loginRequest.getUsername(), e);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "An unexpected error occurred"));
-            });
-    }
 }

@@ -36,25 +36,22 @@ public class OtpController {
     }
 
     @PostMapping("/verify")
-    public CompletableFuture<ResponseEntity<?>> verifyOtp(@RequestBody Map<String, String> payload, Authentication authentication, HttpSession session) {
-        String username = authentication.getName();
+    public CompletableFuture<ResponseEntity<?>> verifyOtp(@RequestBody Map<String, String> payload, HttpSession session) {
         String otp = payload.get("otp");
-        System.out.println("Verifying OTP for user: " + username);
+        String username = (String) session.getAttribute("username");
         
-        if (otp == null || otp.isEmpty()) {
-            return CompletableFuture.completedFuture(ResponseEntity.badRequest().body(Map.of("error", "OTP is required")));
+        if (username == null || otp == null || otp.isEmpty()) {
+            return CompletableFuture.completedFuture(ResponseEntity.badRequest().body(Map.of("error", "Invalid request")));
         }
+        
+        System.out.println("Verifying OTP for user: " + username);
         
         return otpService.validateOTP(username, otp)
             .thenApply(isValid -> {
                 if (isValid) {
                     session.setAttribute("otpVerified", true);
                     System.out.println("OTP verified successfully for user: " + username);
-                    if (authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
-                        return ResponseEntity.ok().body(Map.of("message", "OTP verified successfully", "redirect", "/admins/home"));
-                    } else {
-                        return ResponseEntity.ok().body(Map.of("message", "OTP verified successfully", "redirect", "/users/home"));
-                    }
+                    return ResponseEntity.ok().body(Map.of("message", "OTP verified successfully", "redirect", "/users/home"));
                 } else {
                     System.out.println("OTP verification failed for user: " + username);
                     return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid OTP entered. Please try again."));

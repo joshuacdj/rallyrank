@@ -8,9 +8,9 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-
 import jakarta.servlet.http.HttpServletResponse;
 
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -26,21 +26,21 @@ public class SecurityConfig {
         http
             .addFilterAfter(new OtpVerificationFilter(), UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(requests -> requests
-                .requestMatchers("/otp/verify", "/otp/send", "/css/**", "/js/**", "/images/**", "/users/login", "/admins/login").permitAll()
+                .requestMatchers("/otp/**", "/css/**", "/js/**", "/images/**", "/auth/**").permitAll()
                 .requestMatchers("/admins/**").hasRole("ADMIN")
                 .requestMatchers("/users/**").hasRole("USER")
-                .anyRequest().authenticated())
-            .formLogin(login -> login
-                .loginPage("/users/login")
-                .successHandler(customSuccessHandler())
-                .failureHandler((request, response, exception) -> {
+                .anyRequest().authenticated()
+            )
+            .exceptionHandling(exceptions -> exceptions
+                .authenticationEntryPoint((request, response, authException) -> {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-                    response.getWriter().write("{\"error\": \"Authentication failed\"}");
+                    response.getWriter().write("{\"error\": \"User not authenticated\", \"redirect\": \"/auth/login\"}");
                 })
-                .permitAll())
-            .logout(logout -> logout
-                .permitAll())
-            .csrf(csrf -> csrf.ignoringRequestMatchers("/users/login", "/otp/send", "/otp/verify", "/admins/login"));
+            )
+            .sessionManagement(session -> session
+                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+            .csrf(csrf -> csrf.ignoringRequestMatchers("/auth/**", "/otp/**", "/users/**", "/admins/**"));
 
         return http.build();
     }
