@@ -8,6 +8,7 @@ import com.example.backend.exception.UserNotFoundException;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import org.slf4j.Logger;
@@ -141,7 +142,7 @@ public class UsersController {
     public CompletableFuture<ResponseEntity<?>> createUser(@RequestBody User user) {
         return userService.createUser(user)
                 .<ResponseEntity<?>>thenApply(createdUser -> {
-                    logger.info("User created successfully: {}", createdUser.getUserName());
+                    logger.info("User created successfully: {}", createdUser.getUsername());
                     return ResponseEntity.ok(createdUser);
                 })
                 .exceptionally(e -> {
@@ -188,6 +189,7 @@ public class UsersController {
      * @throws RuntimeException if there is an unexpected error during the update process
      */
     @PutMapping("/{userName}/update")
+    @PreAuthorize("authentication.principal.username == #userName or hasRole('ADMIN')")
     public CompletableFuture<ResponseEntity<?>> updateUser(@PathVariable String userName, @RequestBody User newUserDetails) {
         return userService.updateUser(userName, newUserDetails)
             .<ResponseEntity<?>>thenApply(updatedUser -> {

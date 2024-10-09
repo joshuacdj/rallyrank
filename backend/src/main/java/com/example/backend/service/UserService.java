@@ -5,6 +5,7 @@ import com.example.backend.repository.UserRepository;
 import com.example.backend.exception.UserNotFoundException;
 
 import lombok.RequiredArgsConstructor;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final LocalValidatorFactoryBean validator;
     private final PasswordEncoder passwordEncoder;
+
 
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
@@ -119,7 +121,7 @@ public class UserService {
                 if (userRepository.existsByEmail(user.getEmail())) {
                     errors.rejectValue("email", "duplicate.email", "Email already exists");
                 }
-                if (userRepository.existsByUserName(user.getUserName())) {
+                if (userRepository.existsByUserName(user.getUsername())) {
                     errors.rejectValue("userName", "duplicate.userName", "Username already exists");
                 }
 
@@ -132,7 +134,7 @@ public class UserService {
                 }
 
                 User createdUser = userRepository.save(user);
-                logger.info("User created successfully: {}", createdUser.getUserName());
+                logger.info("User created successfully: {}", createdUser.getUsername());
                 return createdUser;
             } catch (IllegalArgumentException e) {
                 // Throw the exception with the original message to be handled by the controller
@@ -175,8 +177,8 @@ public class UserService {
                         && userRepository.existsByEmail(newUserDetails.getEmail())) {
                     errors.rejectValue("email", "duplicate.email", "Email already exists");
                 }
-                if (!user.getUserName().equals(newUserDetails.getUserName())
-                        && userRepository.existsByUserName(user.getUserName())) {
+                if (!user.getUsername().equals(newUserDetails.getUsername())
+                        && userRepository.existsByUserName(user.getUsername())) {
                     errors.rejectValue("userName", "duplicate.userName", "Username already exists");
                 }
 
@@ -196,7 +198,7 @@ public class UserService {
                 user.setDateOfBirth(newUserDetails.getDateOfBirth());
                 user.setMedicalInformation(newUserDetails.getMedicalInformation());
                 user.setProfilePic(newUserDetails.getProfilePic());
-                user.setUserName(newUserDetails.getUserName());
+                user.setUserName(newUserDetails.getUsername());
                 user.setFirstName(newUserDetails.getFirstName());
                 user.setLastName(newUserDetails.getLastName());
                 user.setAvailable(newUserDetails.isAvailable());
