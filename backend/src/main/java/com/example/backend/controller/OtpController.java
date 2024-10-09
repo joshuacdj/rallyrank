@@ -6,6 +6,9 @@ import java.util.Map;
 import com.example.backend.service.EmailService;
 import com.example.backend.service.OtpService;
 import com.example.backend.service.UserService;
+
+import jakarta.servlet.http.HttpSession;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,7 +36,7 @@ public class OtpController {
     }
 
     @PostMapping("/verify")
-    public CompletableFuture<ResponseEntity<?>> verifyOtp(@RequestBody Map<String, String> payload, Authentication authentication) {
+    public CompletableFuture<ResponseEntity<?>> verifyOtp(@RequestBody Map<String, String> payload, Authentication authentication, HttpSession session) {
         String username = authentication.getName();
         String otp = payload.get("otp");
         System.out.println("Verifying OTP for user: " + username);
@@ -45,6 +48,7 @@ public class OtpController {
         return otpService.validateOTP(username, otp)
             .thenApply(isValid -> {
                 if (isValid) {
+                    session.setAttribute("otpVerified", true);
                     System.out.println("OTP verified successfully for user: " + username);
                     if (authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
                         return ResponseEntity.ok().body(Map.of("message", "OTP verified successfully", "redirect", "/admins/home"));

@@ -24,7 +24,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            //.addFilterAfter(new OtpVerificationFilter(), UsernamePasswordAuthenticationFilter.class)
+            .addFilterAfter(new OtpVerificationFilter(), UsernamePasswordAuthenticationFilter.class)
             .authorizeHttpRequests(requests -> requests
                 .requestMatchers("/otp/verify", "/otp/send", "/css/**", "/js/**", "/images/**", "/users/login", "/admins/login").permitAll()
                 .requestMatchers("/admins/**").hasRole("ADMIN")
