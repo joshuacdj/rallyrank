@@ -39,7 +39,7 @@ public class AuthenticationService {
 
     public User signup(RegisterUserDto registerUserDto) {
         User user = new User();
-        user.setUserName(registerUserDto.getUsername());
+        user.setUsername(registerUserDto.getUsername());
         user.setEmail(registerUserDto.getEmail());
         user.setPassword(passwordEncoder.encode(registerUserDto.getPassword()));
         user.setVerificationCode(generateVerificationCode());
@@ -52,7 +52,7 @@ public class AuthenticationService {
     }
 
     public User authenticate(LoginUserDto loginUserDto) {
-        User user = userRepository.findByUserName(loginUserDto.getUsername())
+        User user = userRepository.findByUsername(loginUserDto.getUsername())
                     .orElseThrow(() -> new UserNotFoundException(loginUserDto.getUsername()));
 
         if (!user.isEnabled()) {
@@ -66,7 +66,7 @@ public class AuthenticationService {
     }
 
     public void verifyUser(VerifyUserDto verifyUserDto) {
-        Optional<User> optionalUser = userRepository.findByUserName(verifyUserDto.getUsername());
+        Optional<User> optionalUser = userRepository.findByUsername(verifyUserDto.getUsername());
 
         if (optionalUser.isPresent()) {
             User user = optionalUser.get();

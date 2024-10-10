@@ -59,24 +59,24 @@ public class UserService {
      * @throws UserNotFoundException if no user with the username is found in the database
      */
     public User getUserByUsername(String username) throws UserNotFoundException {
-        return userRepository.findByUserName(username)
+        return userRepository.findByUsername(username)
                 .orElseThrow(() -> new UserNotFoundException(username));
     }
 
     /**
      * Asynchronously checks if the provided username exists in the database.
      *
-     * @param userName the username to check
+     * @param username the username to check
      * @return a CompletableFuture containing true if the username exists, false otherwise
      * @throws IllegalArgumentException if the username is null or empty
      */
     @Async("taskExecutor")
-    public CompletableFuture<Boolean> checkIfUserNameExists(String userName) {
+    public CompletableFuture<Boolean> checkIfUsernameExists(String username) {
         return CompletableFuture.supplyAsync(() -> {
-            if (userName == null || userName.isEmpty()) {
+            if (username == null || username.isEmpty()) {
                 throw new IllegalArgumentException("Username must be provided!");
             }
-            return userRepository.existsByUserName(userName);
+            return userRepository.existsByUsername(username);
         });
     }
     
@@ -121,8 +121,8 @@ public class UserService {
                 if (userRepository.existsByEmail(user.getEmail())) {
                     errors.rejectValue("email", "duplicate.email", "Email already exists");
                 }
-                if (userRepository.existsByUserName(user.getUsername())) {
-                    errors.rejectValue("userName", "duplicate.userName", "Username already exists");
+                if (userRepository.existsByUsername(user.getUsername())) {
+                    errors.rejectValue("username", "duplicate.username", "Username already exists");
                 }
 
                 // Add any errors into a list and throw as an exception
@@ -154,7 +154,7 @@ public class UserService {
      * The strikeReport and participatedTournaments field are intentionally left out becuase the users should not be able to update that.
      * It returns an updated User Object.
      * 
-     * @param userName
+     * @param username
      * @param newUserDetails
      * @return a CompletableFuture with the updated User Object
      * @throws UserNotFoundException
@@ -162,12 +162,12 @@ public class UserService {
      * @throws RuntimeException
      */
     @Async("taskExecutor")
-    public CompletableFuture<User> updateUser(String userName, User newUserDetails)
+    public CompletableFuture<User> updateUser(String username, User newUserDetails)
             throws UserNotFoundException, IllegalArgumentException, RuntimeException {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                User user = userRepository.findByUserName(userName)
-                        .orElseThrow(() -> new UserNotFoundException(userName));
+                User user = userRepository.findByUsername(username)
+                        .orElseThrow(() -> new UserNotFoundException(username));
 
                 // Check if the newUserDetails has valid inputs
                 Errors errors = new BeanPropertyBindingResult(newUserDetails, "user");
@@ -178,8 +178,8 @@ public class UserService {
                     errors.rejectValue("email", "duplicate.email", "Email already exists");
                 }
                 if (!user.getUsername().equals(newUserDetails.getUsername())
-                        && userRepository.existsByUserName(user.getUsername())) {
-                    errors.rejectValue("userName", "duplicate.userName", "Username already exists");
+                        && userRepository.existsByUsername(user.getUsername())) {
+                    errors.rejectValue("username", "duplicate.username", "Username already exists");
                 }
 
                 if (errors.hasErrors()) {
@@ -198,12 +198,12 @@ public class UserService {
                 user.setDateOfBirth(newUserDetails.getDateOfBirth());
                 user.setMedicalInformation(newUserDetails.getMedicalInformation());
                 user.setProfilePic(newUserDetails.getProfilePic());
-                user.setUserName(newUserDetails.getUsername());
+                user.setUsername(newUserDetails.getUsername());
                 user.setFirstName(newUserDetails.getFirstName());
                 user.setLastName(newUserDetails.getLastName());
                 user.setAvailable(newUserDetails.isAvailable());
                 
-                logger.info("User updated successfully: {}", userName);
+                logger.info("User updated successfully: {}", username);
                 return userRepository.save(user);
             } catch (IllegalArgumentException e) {
                 logger.error("Validation errors during user update: {}", e.getMessage(), e);
@@ -217,22 +217,22 @@ public class UserService {
 
     /**
      * Updates the availability of a user based on the user name
-     * @param userName the username of the user to update, must not be null or empty
+     * @param username the username of the user to update, must not be null or empty
      * @param available the new availability status of the user
      * @return the updated user object
      * @throws UserNotFoundException if no user with the username is found in the database
      * @throws RuntimeException if there is an unexpected error during the update process
      */
-    public User updateUserAvailability(String userName, boolean available) throws UserNotFoundException, RuntimeException {
+    public User updateUserAvailability(String username, boolean available) throws UserNotFoundException, RuntimeException {
         try {
-            User user = userRepository.findByUserName(userName)
-                .orElseThrow(() -> new UserNotFoundException(userName));
+            User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new UserNotFoundException(username));
             user.setAvailable(available);
-            logger.info("User availability updated successfully: {}", userName);
+            logger.info("User availability updated successfully: {}", username);
             return userRepository.save(user);
         } catch (UserNotFoundException e) {
-            logger.error("User not found: {}", userName);
-            throw new UserNotFoundException(userName);
+            logger.error("User not found: {}", username);
+            throw new UserNotFoundException(username);
         } catch (Exception e) {
             logger.error("Unexpected error during user update: {}", e.getMessage(), e);
             throw new RuntimeException(e.getMessage(), e);
@@ -247,7 +247,7 @@ public class UserService {
     public CompletableFuture<User> authenticateUser(String username, String password) {
         return CompletableFuture.supplyAsync(() -> {
             logger.info("Attempting to authenticate user: {}", username);
-            Optional<User> userOptional = userRepository.findByUserName(username);
+            Optional<User> userOptional = userRepository.findByUsername(username);
             if (userOptional.isPresent()) {
                 User user = userOptional.get();
                 logger.info("User found: {}", username);

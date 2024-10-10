@@ -15,6 +15,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+
 
 @RestController // This annotation marks the class as a RESTful web service controller
 @RequestMapping("/users") // This annotation maps the class to the users endpoint
@@ -46,38 +48,38 @@ public class UsersController {
      * 
      * This method checks if username and/or email are available for sign up purposes.
      * 
-     * @param userName the username to check for availability (optional)
+     * @param username the username to check for availability (optional)
      * @param email the email to check for availability (optional)
      * @return a CompletableFuture containing a response entity with the availability status and message.
      */
     @GetMapping("/signup/check-availability")
-    public CompletableFuture<ResponseEntity<?>> checkAvailability(@RequestParam(required = false) String userName, @RequestParam(required = false) String email) {
+    public CompletableFuture<ResponseEntity<?>> checkAvailability(@RequestParam(required = false) String username, @RequestParam(required = false) String email) {
         Map<String, Object> response = new HashMap<>();
 
-        if (userName == null && email == null) {
+        if (username == null && email == null) {
             response.put("message", "Either username or email must be provided!");
             return CompletableFuture.completedFuture(ResponseEntity.badRequest().body(response));
         }
 
         // Create futures for checking username and email availability
-        CompletableFuture<Boolean> userNameFuture = userName != null ? userService.checkIfUserNameExists(userName) : CompletableFuture.completedFuture(null);
+        CompletableFuture<Boolean> usernameFuture = username != null ? userService.checkIfUsernameExists(username) : CompletableFuture.completedFuture(null);
         CompletableFuture<Boolean> emailFuture = email != null ? userService.checkIfEmailExists(email) : CompletableFuture.completedFuture(null);
 
-        return CompletableFuture.allOf(userNameFuture, emailFuture)
+        return CompletableFuture.allOf(usernameFuture, emailFuture)
             .<ResponseEntity<?>>thenApply(v -> {
-                Boolean userNameExists = userNameFuture.join();
+                Boolean usernameExists = usernameFuture.join();
                 Boolean emailExists = emailFuture.join();
 
                 StringBuilder message = new StringBuilder();
                 boolean hasError = false;
 
                 // Check if username is provided and if it exists
-                if (userName == null) {
+                if (username == null) {
                     message.append("Username must be provided. ");
                     hasError = true;
                 } else {
-                    response.put("userNameAvailable", !userNameExists);
-                    if (userNameExists) {
+                    response.put("usernameAvailable", !usernameExists);
+                    if (usernameExists) {
                         message.append("Username is already taken. ");
                     }
                 }
@@ -95,9 +97,9 @@ public class UsersController {
 
                 // If no errors and both username and email are provided, set both as available
                 if (!hasError && message.length() == 0) {
-                    if (userName != null && email != null) {
+                    if (username != null && email != null) {
                         message.append("Username and email are available.");
-                    } else if (userName != null) {
+                    } else if (username != null) {
                         message.append("Username is available.");
                     } else {
                         message.append("Email is available.");
@@ -159,19 +161,19 @@ public class UsersController {
 
     /**
      * Retrieves the user profile based on the user name
-     * @param userName the username of the user to retrieve, must not be null or empty
+     * @param username the username of the user to retrieve, must not be null or empty
      * @return the user object associated with the specified username
      * @throws UserNotFoundException if no user with the username is found in the database
      * @throws RuntimeException if there is an unexpected error during the retrieval process
      */
-    @GetMapping("/{userName}")
-    public ResponseEntity<?> getUserProfile(@PathVariable String userName) {
+    @GetMapping("/{username}")
+    public ResponseEntity<?> getUserProfile(@PathVariable String username) {
         try {
-            User user = userService.getUserByUsername(userName);
-            logger.info("User profile retrieved successfully: {}", userName);
+            User user = userService.getUserByUsername(username);
+            logger.info("User profile retrieved successfully: {}", username);
             return ResponseEntity.ok(user);
         } catch (UserNotFoundException e) {
-            logger.error("User not found: {}", userName);
+            logger.error("User not found: {}", username);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             logger.error("Error retrieving user profile: {}", e.getMessage(), e);
@@ -181,50 +183,74 @@ public class UsersController {
 
     /**
      * Updates the user details based on the user name
-     * @param userName the username of the user to update, must not be null or empty
+     * @param username the username of the user to update, must not be null or empty
      * @param newUserDetails the new details of the user to be updated
      * @return the updated user object
      * @throws UserNotFoundException if no user with the username is found in the database
      * @throws RuntimeException if there is an unexpected error during the update process
      */
-    @PutMapping("/{userName}/update")
-    public CompletableFuture<ResponseEntity<?>> updateUser(@PathVariable String userName, @RequestBody User newUserDetails) {
-        return userService.updateUser(userName, newUserDetails)
-            .<ResponseEntity<?>>thenApply(updatedUser -> {
-                logger.info("User updated successfully: {}", userName);
-                return ResponseEntity.ok(updatedUser);
-            })
-            .exceptionally(e -> {
-                Throwable cause = e.getCause();
-                if (cause instanceof IllegalArgumentException) {
-                    logger.error("Validation errors during user update: {}", cause.getMessage());
-                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", cause.getMessage()));
-                } else if (cause instanceof UserNotFoundException) {
-                    logger.error("User not found: {}", userName);
-                    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", cause.getMessage()));
-                } else {
-                    logger.error("Unexpected error updating user: {}", cause.getMessage(), cause);
-                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(cause.getMessage());
-                }
-            });
+    // @PutMapping("/{username}/update")
+    // public CompletableFuture<ResponseEntity<?>> updateUser(@PathVariable String username, @RequestBody User newUserDetails) {
+    //     return userService.updateUser(username, newUserDetails)
+    //         .<ResponseEntity<?>>thenApply(updatedUser -> {
+    //             logger.info("User updated successfully: {}", username);
+    //             return ResponseEntity.ok(updatedUser);
+    //         })
+    //         .exceptionally(e -> {
+    //             Throwable cause = e.getCause();
+    //             if (cause instanceof IllegalArgumentException) {
+    //                 logger.error("Validation errors during user update: {}", cause.getMessage());
+    //                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", cause.getMessage()));
+    //             } else if (cause instanceof UserNotFoundException) {
+    //                 logger.error("User not found: {}", username);
+    //                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", cause.getMessage()));
+    //             } else {
+    //                 logger.error("Unexpected error updating user: {}", cause.getMessage(), cause);
+    //                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(cause.getMessage());
+    //             }
+    //         });
+    // }
+
+    // REMOVED CompletableFuture and added .get()
+    @PutMapping("/{username}/update")
+    public ResponseEntity<?> updateUser(@PathVariable String username, @RequestBody User newUserDetails) {
+        try {
+            User updatedUser = userService.updateUser(username, newUserDetails).get(); // Wait for the CompletableFuture to complete
+            logger.info("User updated successfully: {}", username);
+            return ResponseEntity.ok(updatedUser);
+        } catch (InterruptedException | ExecutionException e) {
+            logger.error("Error updating user: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while updating the user");
+        } catch (Exception e) {
+            if (e.getCause() instanceof IllegalArgumentException) {
+                logger.error("Validation errors during user update: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+            } else if (e.getCause() instanceof UserNotFoundException) {
+                logger.error("User not found: {}", username);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+            } else {
+                logger.error("Unexpected error updating user: {}", e.getMessage(), e);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
+            }
+        }
     }
 
     /**
      * Updates the availability of a user based on the user name
-     * @param userName the username of the user to update, must not be null or empty
+     * @param username the username of the user to update, must not be null or empty
      * @param availability the new availability status of the user
      * @return the updated user object
      * @throws UserNotFoundException if no user with the username is found in the database
      * @throws RuntimeException if there is an unexpected error during the update process
      */
-    @PutMapping("/{userName}/update-availability")
-    public ResponseEntity<?> updateUserAvailability(@PathVariable String userName, @RequestParam Boolean availability) {
+    @PutMapping("/{username}/update-availability")
+    public ResponseEntity<?> updateUserAvailability(@PathVariable String username, @RequestParam Boolean availability) {
         try {
-            User user = userService.updateUserAvailability(userName, availability);
-            logger.info("User availability updated successfully: {}", userName);
+            User user = userService.updateUserAvailability(username, availability);
+            logger.info("User availability updated successfully: {}", username);
             return ResponseEntity.ok(user);
         } catch (UserNotFoundException e) {
-            logger.error("User not found: {}", userName);
+            logger.error("User not found: {}", username);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             logger.error("Unexpected error updating user availability: {}", e.getMessage(), e);
@@ -238,8 +264,8 @@ public class UsersController {
     //     return userService.authenticateUser(loginRequest.getUsername(), loginRequest.getPassword())
     //         .thenCompose(user -> {
     //             if (user != null) {
-    //                 logger.info("User authenticated successfully: {}", user.getUserName());
-    //                 return otpService.generateOTP(user.getUserName())
+    //                 logger.info("User authenticated successfully: {}", user.getUsername());
+    //                 return otpService.generateOTP(user.getUsername())
     //                     .thenCompose(otp -> emailService.sendOtpEmail(user.getEmail(), otp))
     //                     .thenApply(emailSent -> {
     //                         if (emailSent) {
@@ -247,7 +273,7 @@ public class UsersController {
     //                             session.setAttribute("needOtpVerification", true);
     //                             return ResponseEntity.ok(Map.of("message", "OTP sent successfully", "redirect", "/otp/verify"));
     //                         } else {
-    //                             logger.error("Failed to send OTP for user: {}", user.getUserName());
+    //                             logger.error("Failed to send OTP for user: {}", user.getUsername());
     //                             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "Failed to send OTP"));
     //                         }
     //                     });

@@ -72,7 +72,7 @@ public class User implements UserDetails{
 
     @NotNull(message = "Username is required!")
     @Indexed(unique = true)
-    private String userName;
+    private String username;
 
     @NotNull(message = "First name is required!")   
     private String firstName;
@@ -117,7 +117,7 @@ public class User implements UserDetails{
 
     @Override
     public String getUsername() {
-        return userName;
+        return username;
     }
 
     @Override
