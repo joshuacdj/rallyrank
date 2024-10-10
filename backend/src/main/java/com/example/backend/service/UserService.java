@@ -175,11 +175,11 @@ public class UserService {
 
                 if (!user.getEmail().equals(newUserDetails.getEmail())
                         && userRepository.existsByEmail(newUserDetails.getEmail())) {
-                    errors.rejectValue("email", "duplicate.email", "Email already exists");
+                    errors.rejectValue("email", "duplicate.email", "Email already exists in database!");
                 }
                 if (!user.getUsername().equals(newUserDetails.getUsername())
                         && userRepository.existsByUsername(user.getUsername())) {
-                    errors.rejectValue("username", "duplicate.username", "Username already exists");
+                    errors.rejectValue("username", "duplicate.username", "Username already exists in database!");
                 }
 
                 if (errors.hasErrors()) {
