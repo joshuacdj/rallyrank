@@ -14,9 +14,11 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.backend.dto.LoginUserDto;
 import com.example.backend.dto.RegisterUserDto;
 import com.example.backend.dto.VerifyUserDto;
+import com.example.backend.exception.UserNotEnabledException;
 import com.example.backend.exception.UserNotFoundException;
 import com.example.backend.model.User;
 import com.example.backend.responses.LoginResponse;
+import com.example.backend.security.UserPrincipal;
 import com.example.backend.service.AuthenticationService;
 import com.example.backend.service.JwtService;
 
@@ -45,13 +47,16 @@ public class AuthController {
     @PostMapping("/user-login")
     public ResponseEntity<?> login(@RequestBody LoginUserDto loginUserDto) {
         try {
-            User authenticatedUser = authenticationService.authenticate(loginUserDto);
+            UserPrincipal authenticatedUser = authenticationService.authenticate(loginUserDto);
             String jwtToken = jwtService.generateToken(authenticatedUser);
             LoginResponse loginResponse = new LoginResponse(jwtToken, jwtService.getJwtExpiration());
             return ResponseEntity.ok(loginResponse);
         } catch (UserNotFoundException e) {
             logger.error("User not found: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+        } catch (UserNotEnabledException e) {
+            logger.error("User not enabled: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Your account is not enabled. Please check your email to enable your account.");
         } catch (Exception e) {
             logger.error("Error occurred during login", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred during login");

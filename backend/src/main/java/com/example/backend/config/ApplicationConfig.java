@@ -11,22 +11,37 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.context.annotation.Bean;
 
+import com.example.backend.model.User;
+import com.example.backend.model.Admin;
+import com.example.backend.security.UserPrincipal;
 import com.example.backend.repository.UserRepository;
+import com.example.backend.repository.AdminRepository;
 
 @Configuration
 public class ApplicationConfig {
 
     private final UserRepository userRepository;
+    private final AdminRepository adminRepository;
 
     @Autowired
-    public ApplicationConfig(UserRepository userRepository) {
+    public ApplicationConfig(UserRepository userRepository, AdminRepository adminRepository) {
         this.userRepository = userRepository;
+        this.adminRepository = adminRepository;
     }
 
     @Bean
     public UserDetailsService userDetailsService() {
-        return username -> userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return username -> {
+            User user = userRepository.findByUsername(username)
+                    .orElse(null);
+            if (user != null) {
+                return UserPrincipal.create(user);
+            }
+
+            Admin admin = adminRepository.findByAdminName(username)
+                    .orElseThrow(() -> new UsernameNotFoundException("Admin not found"));
+            return UserPrincipal.create(admin);
+        };
     }
 
     @Bean

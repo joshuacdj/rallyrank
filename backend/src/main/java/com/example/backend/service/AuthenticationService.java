@@ -18,6 +18,7 @@ import com.example.backend.exception.UserNotFoundException;
 import com.example.backend.model.User;
 import com.example.backend.repository.UserRepository;
 import com.example.backend.responses.LoginResponse;
+import com.example.backend.security.UserPrincipal;
 
 import jakarta.mail.MessagingException;
 
@@ -51,18 +52,18 @@ public class AuthenticationService {
         return userRepository.save(user);
     }
 
-    public User authenticate(LoginUserDto loginUserDto) {
+    public UserPrincipal authenticate(LoginUserDto loginUserDto) {
         User user = userRepository.findByUsername(loginUserDto.getUsername())
                     .orElseThrow(() -> new UserNotFoundException(loginUserDto.getUsername()));
-
+    
         if (!user.isEnabled()) {
             throw new UserNotEnabledException("Account not verified. Please check your email to enable your account.");
         }
-
+    
         authenticationManager.authenticate(
             new UsernamePasswordAuthenticationToken(loginUserDto.getUsername(), loginUserDto.getPassword()));
-
-        return user;
+    
+        return UserPrincipal.create(user);
     }
 
     public void verifyUser(VerifyUserDto verifyUserDto) {

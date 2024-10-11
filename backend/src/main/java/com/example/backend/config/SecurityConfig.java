@@ -46,6 +46,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/users/signup/check-availability").permitAll()
                 .requestMatchers(HttpMethod.POST, "/users/signup").permitAll()
                 .requestMatchers(HttpMethod.GET, "/users/{username}").permitAll()
+                .requestMatchers("/users/**").hasRole("USER")
+                .requestMatchers("/admins/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
