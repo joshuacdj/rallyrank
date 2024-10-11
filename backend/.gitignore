@@ -34,6 +34,6 @@ build/
 
 .class
 .env
-.cursorignore
+../.cursorignore
 
 application.properties

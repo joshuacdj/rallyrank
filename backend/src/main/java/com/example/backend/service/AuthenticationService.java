@@ -55,7 +55,16 @@ public class AuthenticationService {
         user.setVerificationCode(generateVerificationCode());
         user.setVerificationCodeExpiration(LocalDateTime.now().plusMinutes(15)); // 15 minutes
         user.setEnabled(false);
-    
+
+        user.setFirstName(registerUserDto.getFirstName());
+        user.setLastName(registerUserDto.getLastName());
+        user.setPhoneNumber(registerUserDto.getPhoneNumber());
+        user.setElo(registerUserDto.getElo());
+        user.setGender(registerUserDto.getGender());
+        user.setDateOfBirth(registerUserDto.getDateOfBirth());
+        user.setAge(registerUserDto.getAge());
+        user.setMedicalInformation(registerUserDto.getMedicalInformation());
+
         sendVerificationEmail(user);
     
         return userRepository.save(user);

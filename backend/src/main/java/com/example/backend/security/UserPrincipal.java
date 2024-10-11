@@ -9,6 +9,12 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.List;
 
+/**
+ * UserPrincipal class that implements UserDetails interface.
+ * This class is used to store the user and admininformation and authorities.
+ * This is crucial for JWT authentication.
+ */
+
 public class UserPrincipal implements UserDetails {
     private static final long serialVersionUID = 1L;
 
