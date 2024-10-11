@@ -2,7 +2,6 @@ package com.example.backend.service;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -15,6 +14,7 @@ import com.example.backend.dto.RegisterUserDto;
 import com.example.backend.dto.VerifyUserDto;
 import com.example.backend.exception.EmailAlreadyExistsException;
 import com.example.backend.exception.InvalidVerificationCodeException;
+import com.example.backend.exception.UserAlreadyVerifiedException;
 import com.example.backend.exception.UserNotEnabledException;
 import com.example.backend.exception.UserNotFoundException;
 import com.example.backend.exception.UsernameAlreadyExistsException;
@@ -87,25 +87,6 @@ public class AuthenticationService {
     }
 
     public void verifyUser(VerifyUserDto verifyUserDto) {
-        // Optional<User> optionalUser = userRepository.findByUsername(verifyUserDto.getUsername());
-
-        // if (optionalUser.isPresent()) {
-        //     User user = optionalUser.get();
-        //     if (user.getVerificationCodeExpiration().isBefore(LocalDateTime.now())) {
-        //         throw new RuntimeException("Verification code expired");
-        //     }
-
-        //     if (user.getVerificationCode().equals(verifyUserDto.getVerificationCode())) {
-        //         user.setEnabled(true);
-        //         user.setVerificationCode(null);
-        //         user.setVerificationCodeExpiration(null);
-        //         userRepository.save(user);
-        //     } else {
-        //         throw new RuntimeException("Verification code mismatch");
-        //     }
-        // } else {
-        //     throw new UserNotFoundException(verifyUserDto.getUsername());
-        // }
 
         User user = userRepository.findByUsername(verifyUserDto.getUsername())
         .orElseThrow(() -> new UserNotFoundException("User not found with username: " + verifyUserDto.getUsername()));
@@ -126,24 +107,19 @@ public class AuthenticationService {
     }
 
     public void resendVerificationCode(String email) {
-        Optional<User> optionalUser = userRepository.findByEmail(email);
 
-        if (optionalUser.isPresent()) {
-            User user = optionalUser.get();
-            
-            if (user.isEnabled()) {
-                throw new RuntimeException("Account is already verified");
-            }
+        User user = userRepository.findByEmail(email)
+            .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
 
-            user.setVerificationCode(generateVerificationCode());
-            user.setVerificationCodeExpiration(LocalDateTime.now().plusMinutes(15));
-
-            sendVerificationEmail(user);
-            userRepository.save(user);
-            
-        } else {
-            throw new RuntimeException("User not found");
+        if (user.isEnabled()) {
+            throw new UserAlreadyVerifiedException("Account is already verified");
         }
+
+        user.setVerificationCode(generateVerificationCode());
+        user.setVerificationCodeExpiration(LocalDateTime.now().plusMinutes(15));
+
+        sendVerificationEmail(user);
+        userRepository.save(user);
     }
 
     public void sendVerificationEmail(User user) {
@@ -152,7 +128,7 @@ public class AuthenticationService {
         String htmlMessage = "<html>"
                 + "<body style=\"font-family: Arial, sans-serif;\">"
                 + "<div style=\"background-color: #f5f5f5; padding: 20px;\">"
-                + "<h2 style=\"color: #333;\">Welcome to our RallyRank!</h2>"
+                + "<h2 style=\"color: #333;\">Welcome to RallyRank!</h2>"
                 + "<p style=\"font-size: 16px;\">Please enter the verification code below to continue:</p>"
                 + "<div style=\"background-color: #fff; padding: 20px; border-radius: 5px; box-shadow: 0 0 10px rgba(0,0,0,0.1);\">"
                 + "<h3 style=\"color: #333;\">Verification Code:</h3>"

@@ -1,5 +1,7 @@
 package com.example.backend.controller;
 
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +20,7 @@ import com.example.backend.dto.RegisterUserDto;
 import com.example.backend.dto.VerifyUserDto;
 import com.example.backend.exception.EmailAlreadyExistsException;
 import com.example.backend.exception.InvalidVerificationCodeException;
+import com.example.backend.exception.UserAlreadyVerifiedException;
 import com.example.backend.exception.UserNotEnabledException;
 import com.example.backend.exception.UserNotFoundException;
 import com.example.backend.exception.UsernameAlreadyExistsException;
@@ -68,25 +71,6 @@ public class AuthController {
     
     }
 
-    // @PostMapping("/user-login")
-    // public ResponseEntity<?> login(@RequestBody LoginUserDto loginUserDto) {
-    //     try {
-    //         UserPrincipal authenticatedUser = authenticationService.authenticate(loginUserDto);
-    //         String jwtToken = jwtService.generateToken(authenticatedUser);
-    //         LoginResponse loginResponse = new LoginResponse(jwtToken, jwtService.getJwtExpiration());
-    //         return ResponseEntity.ok(loginResponse);
-    //     } catch (UserNotFoundException e) {
-    //         logger.error("User not found: {}", e.getMessage());
-    //         return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
-    //     } catch (UserNotEnabledException e) {
-    //         logger.error("User not enabled: {}", e.getMessage());
-    //         return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Your account is not enabled. Please check your email to enable your account.");
-    //     } catch (Exception e) {
-    //         logger.error("Error occurred during login", e);
-    //         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred during login");
-    //     }
-    // }
-
     @PostMapping("/user-login")
     public ResponseEntity<?> login(@RequestBody LoginUserDto loginUserDto) {
         try {
@@ -115,12 +99,6 @@ public class AuthController {
 
     @PostMapping("/user-verify")
     public ResponseEntity<?> verifyUser(@RequestBody VerifyUserDto verifyUserDto) {
-        // try {
-        //     authenticationService.verifyUser(verifyUserDto);
-        //     return ResponseEntity.ok("User verified successfully");
-        // } catch (RuntimeException e) {
-        //     return ResponseEntity.badRequest().body("Invalid verification code");
-        // }
 
         try {
             authenticationService.verifyUser(verifyUserDto);
@@ -145,12 +123,27 @@ public class AuthController {
     }
 
     @PostMapping("/user-resend")
-    public ResponseEntity<?> resendUserVerificationCode(@RequestBody String email) {
+    public ResponseEntity<?> resendUserVerificationCode(@RequestBody Map<String, String> payload) {
+        String email = payload.get("email");
+        if (email == null || email.trim().isEmpty()) {
+            return ResponseEntity.badRequest()
+                .body(new ErrorResponse("INVALID_INPUT", "Email is required"));
+        }
         try {
             authenticationService.resendVerificationCode(email);
             return ResponseEntity.ok("Verification code resent successfully");
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body("Failed to resend verification code");
+        } catch (UserNotFoundException e) {
+            logger.error("User not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("USER_NOT_FOUND", "User not found"));
+        } catch (UserAlreadyVerifiedException e) {
+            logger.error("User already verified: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("USER_ALREADY_VERIFIED", "User is already verified"));
+        } catch (Exception e) {
+            logger.error("Unexpected error during resend verification: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse("SERVER_ERROR", "An unexpected error occurred during resend verification"));
         }
     }
 }
