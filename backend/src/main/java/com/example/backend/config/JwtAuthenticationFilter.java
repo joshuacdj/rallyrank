@@ -43,7 +43,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     this.jwtService = jwtService;
     this.userDetailsService = userDetailsService;
 
-    }
+    }    
 
     @Override
     protected void doFilterInternal(@NotNull HttpServletRequest request, @NotNull HttpServletResponse response, @NotNull FilterChain filterChain) throws ServletException, IOException {
@@ -67,10 +67,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 UserPrincipal userPrincipal = (UserPrincipal) this.userDetailsService.loadUserByUsername(username);
             
                 if (jwtService.isTokenValid(jwt, userPrincipal)) {
-                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userPrincipal, null, userPrincipal.getAuthorities());
+                    UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
+                        userPrincipal, 
+                        null, 
+                        userPrincipal.getAuthorities()
+                    );
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
-                    logger.debug("Authentication set for user: {}", username);
+                    logger.debug("Authentication set for user: {} with authorities: {}", 
+                        username, 
+                        userPrincipal.getAuthorities());
+                } else {
+                    logger.debug("Token is not valid for user: {}", username);
                 }
             }
 
