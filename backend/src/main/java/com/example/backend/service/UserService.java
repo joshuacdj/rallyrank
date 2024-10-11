@@ -2,13 +2,15 @@ package com.example.backend.service;
 
 import com.example.backend.model.User;
 import com.example.backend.repository.UserRepository;
+
+import jakarta.validation.constraints.NotNull;
+
 import com.example.backend.exception.UserNotFoundException;
 
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.Errors;
@@ -16,7 +18,6 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -28,26 +29,21 @@ public class UserService {
 
     private static final Logger logger = LoggerFactory.getLogger(UserService.class);
 
-    /**
-     * Fetch all the users from the database asynchronously.
+     /**
+     * Fetch all the users from the database.
      *
-     * @return a CompletableFuture containing a list of Users. The list will be
-     *         empty if no users are found.
-     * @throws RuntimeException if there is an error fetching users from the
-     *                          database.
+     * @return a list of Users. The list will be empty if no users are found.
+     * @throws RuntimeException if there is an error fetching users from the database.
      */
-    @Async("taskExecutor")
-    public CompletableFuture<List<User>> getAllUsers() throws RuntimeException {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                List<User> users = userRepository.findAll();
-                logger.info("Retrieved {} users", users.size());
-                return users;
-            } catch (Exception e) {
-                logger.error("Error fetching all users", e);
-                throw new RuntimeException("Error fetching users", e);
-            }
-        });
+    public List<User> getAllUsers() throws RuntimeException {
+        try {
+            List<User> users = userRepository.findAll();
+            logger.info("Retrieved {} users", users.size());
+            return users;
+        } catch (Exception e) {
+            logger.error("Error fetching all users", e);
+            throw new RuntimeException("Error fetching users", e);
+        }
     }
 
     /**
@@ -61,156 +57,143 @@ public class UserService {
                 .orElseThrow(() -> new UserNotFoundException(username));
     }
 
-    /**
-     * Asynchronously checks if the provided username exists in the database.
+        /**
+     * Checks if the provided username exists in the database.
      *
      * @param userName the username to check
-     * @return a CompletableFuture containing true if the username exists, false otherwise
+     * @return true if the username exists, false otherwise
      * @throws IllegalArgumentException if the username is null or empty
      */
-    @Async("taskExecutor")
-    public CompletableFuture<Boolean> checkIfUserNameExists(String userName) {
-        return CompletableFuture.supplyAsync(() -> {
-            if (userName == null || userName.isEmpty()) {
-                throw new IllegalArgumentException("Username must be provided!");
-            }
-            return userRepository.existsByUserName(userName);
-        });
+    public boolean checkIfUserNameExists(String userName) {
+        if (userName == null || userName.isEmpty()) {
+            throw new IllegalArgumentException("Username must be provided!");
+        }
+        return userRepository.existsByUserName(userName);
     }
     
-    /**
-     * Asynchronously checks if the provided email exists in the database.
+        /**
+     * Checks if the provided email exists in the database.
      *
      * @param email the email to check
-     * @return a CompletableFuture containing true if the email exists, false otherwise
+     * @return true if the email exists, false otherwise
      * @throws IllegalArgumentException if the email is null or empty
      */
-    @Async("taskExecutor")
-    public CompletableFuture<Boolean> checkIfEmailExists(String email) {
-        return CompletableFuture.supplyAsync(() -> {
-            if (email == null || email.isEmpty()) {
-                throw new IllegalArgumentException("Email must be provided!");
-            }
-            return userRepository.existsByEmail(email);
-        });
+    public boolean checkIfEmailExists(String email) {
+        if (email == null || email.isEmpty()) {
+            throw new IllegalArgumentException("Email must be provided!");
+        }
+        return userRepository.existsByEmail(email);
     }
 
-    /**
-     * Create a new user in the database asynchronously.
+        /**
+     * Create a new user in the database.
      * This method performs validation on the user data and checks for the
      * uniqueness of the email and username.
      *
      * @param user the User object containing the details of the user to be created.
-     * @return a CompletableFuture containing the newly created User.
+     * @return the newly created User.
      * @throws IllegalArgumentException if the user data is invalid or if the email
-     *                                  or username already exists for the
-     *                                  controller to handle
-     * @throws RuntimeException         if there is an unexpected error during user
-     *                                  creation for the controller to handle
+     *                                  or username already exists
+     * @throws RuntimeException if there is an unexpected error during user creation
      */
-    @Async("taskExecutor")
-    public CompletableFuture<User> createUser(User user) throws IllegalArgumentException, RuntimeException {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                Errors errors = new BeanPropertyBindingResult(user, "user");
-                validator.validate(user, errors);
+    public User createUser(@NotNull User user) throws IllegalArgumentException, RuntimeException {
+        try {
+            Errors errors = new BeanPropertyBindingResult(user, "user");
+            validator.validate(user, errors);
 
-                // Check for email and username uniqueness
-                if (userRepository.existsByEmail(user.getEmail())) {
-                    errors.rejectValue("email", "duplicate.email", "Email already exists");
-                }
-                if (userRepository.existsByUserName(user.getUserName())) {
-                    errors.rejectValue("userName", "duplicate.userName", "Username already exists");
-                }
-
-                // Add any errors into a list and throw as an exception
-                if (errors.hasErrors()) {
-                    List<String> errorMessages = errors.getAllErrors().stream()
-                            .map(error -> error.getDefaultMessage())
-                            .collect(Collectors.toList());
-                    throw new IllegalArgumentException(String.join(", ", errorMessages));
-                }
-
-                User createdUser = userRepository.save(user);
-                logger.info("User created successfully: {}", createdUser.getUserName());
-                return createdUser;
-            } catch (IllegalArgumentException e) {
-                // Throw the exception with the original message to be handled by the controller
-                logger.error("Validation errors during user creation: {}", e.getMessage(), e);
-                throw new IllegalArgumentException(e.getMessage(), e);
-            } catch (Exception e) {
-                logger.error("Error creating user: " + e.getMessage(), e);
-                throw new RuntimeException(e.getMessage(), e);
+            if (user.getEmail() != null && userRepository.existsByEmail(user.getEmail())) {
+                errors.rejectValue("email", "duplicate.email", "Email already exists");
             }
-        });
+            if (user.getUserName() != null && userRepository.existsByUserName(user.getUserName())) {
+                errors.rejectValue("userName", "duplicate.userName", "Username already exists");
+            }
+
+            if (errors.hasErrors()) {
+                List<String> errorMessages = errors.getAllErrors().stream()
+                        .map(error -> error.getDefaultMessage())
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList());
+                throw new IllegalArgumentException(String.join(", ", errorMessages));
+            }
+
+            // Encode the password before saving the user
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+
+            User createdUser = userRepository.save(user);
+            logger.info("User created successfully: {}", createdUser.getUserName());
+            return createdUser;
+        } catch (IllegalArgumentException e) {
+            logger.error("Validation errors during user creation: {}", e.getMessage(), e);
+            throw e;
+        } catch (Exception e) {
+            logger.error("Error creating user: " + e.getMessage(), e);
+            throw new RuntimeException(e.getMessage(), e);
+        }
     }
 
-    /**
-     * Asynchronously updates a user's details based on the provided user name
+        /**
+     * Updates a user's details based on the provided user name
      * 
      * This method retrieves the user, validates the new details, and updates the user's information.
-     * The strikeReport and participatedTournaments field are intentionally left out becuase the users should not be able to update that.
+     * The strikeReport and participatedTournaments field are intentionally left out because the users should not be able to update that.
      * It returns an updated User Object.
      * 
      * @param userName
      * @param newUserDetails
-     * @return a CompletableFuture with the updated User Object
+     * @return the updated User Object
      * @throws UserNotFoundException
      * @throws IllegalArgumentException
      * @throws RuntimeException
      */
-    @Async("taskExecutor")
-    public CompletableFuture<User> updateUser(String userName, User newUserDetails)
+    public User updateUser(@NotNull String userName, @NotNull User newUserDetails)
             throws UserNotFoundException, IllegalArgumentException, RuntimeException {
-        return CompletableFuture.supplyAsync(() -> {
-            try {
-                User user = userRepository.findByUserName(userName)
-                        .orElseThrow(() -> new UserNotFoundException(userName));
+        try {
+            User user = userRepository.findByUserName(userName)
+                    .orElseThrow(() -> new UserNotFoundException(userName));
 
-                // Check if the newUserDetails has valid inputs
-                Errors errors = new BeanPropertyBindingResult(newUserDetails, "user");
-                validator.validate(newUserDetails, errors);
+            Errors errors = new BeanPropertyBindingResult(newUserDetails, "user");
+            validator.validate(newUserDetails, errors);
 
-                if (!user.getEmail().equals(newUserDetails.getEmail())
-                        && userRepository.existsByEmail(newUserDetails.getEmail())) {
-                    errors.rejectValue("email", "duplicate.email", "Email already exists");
-                }
-                if (!user.getUserName().equals(newUserDetails.getUserName())
-                        && userRepository.existsByUserName(user.getUserName())) {
-                    errors.rejectValue("userName", "duplicate.userName", "Username already exists");
-                }
-
-                if (errors.hasErrors()) {
-                    List<String> errorMessages = errors.getAllErrors().stream()
-                            .map(error -> error.getDefaultMessage())
-                            .collect(Collectors.toList());
-                    throw new IllegalArgumentException(String.join(", ", errorMessages));
-                }
-
-                // Update the user details
-                user.setEmail(newUserDetails.getEmail());
-                user.setPassword(newUserDetails.getPassword());
-                user.setPhoneNumber(newUserDetails.getPhoneNumber());
-                user.setElo(newUserDetails.getElo());
-                user.setGender(newUserDetails.getGender());
-                user.setDateOfBirth(newUserDetails.getDateOfBirth());
-                user.setMedicalInformation(newUserDetails.getMedicalInformation());
-                user.setProfilePic(newUserDetails.getProfilePic());
-                user.setUserName(newUserDetails.getUserName());
-                user.setFirstName(newUserDetails.getFirstName());
-                user.setLastName(newUserDetails.getLastName());
-                user.setAvailable(newUserDetails.isAvailable());
-                
-                logger.info("User updated successfully: {}", userName);
-                return userRepository.save(user);
-            } catch (IllegalArgumentException e) {
-                logger.error("Validation errors during user update: {}", e.getMessage(), e);
-                throw new IllegalArgumentException(e.getMessage(), e);
-            } catch (Exception e) {
-                logger.error("Unexpected error during user update: {}", e.getMessage(), e);
-                throw new RuntimeException(e.getMessage(), e);
+            if (newUserDetails.getEmail() != null && !user.getEmail().equals(newUserDetails.getEmail())
+                    && userRepository.existsByEmail(newUserDetails.getEmail())) {
+                errors.rejectValue("email", "duplicate.email", "Email already exists");
             }
-        });
+            if (newUserDetails.getUserName() != null && !user.getUserName().equals(newUserDetails.getUserName())
+                    && userRepository.existsByUserName(newUserDetails.getUserName())) {
+                errors.rejectValue("userName", "duplicate.userName", "Username already exists");
+            }
+
+            if (errors.hasErrors()) {
+                List<String> errorMessages = errors.getAllErrors().stream()
+                        .map(error -> error.getDefaultMessage())
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList());
+                throw new IllegalArgumentException(String.join(", ", errorMessages));
+            }
+
+            // Update only non-null fields
+            Optional.ofNullable(newUserDetails.getEmail()).ifPresent(user::setEmail);
+            Optional.ofNullable(newUserDetails.getPassword()).ifPresent(password -> user.setPassword(passwordEncoder.encode(password)));
+            Optional.ofNullable(newUserDetails.getPhoneNumber()).ifPresent(user::setPhoneNumber);
+            if (newUserDetails.getElo() != 0) user.setElo(newUserDetails.getElo());
+            Optional.ofNullable(newUserDetails.getGender()).ifPresent(user::setGender);
+            Optional.ofNullable(newUserDetails.getDateOfBirth()).ifPresent(user::setDateOfBirth);
+            Optional.ofNullable(newUserDetails.getMedicalInformation()).ifPresent(user::setMedicalInformation);
+            Optional.ofNullable(newUserDetails.getProfilePic()).ifPresent(user::setProfilePic);
+            Optional.ofNullable(newUserDetails.getUserName()).ifPresent(user::setUserName);
+            Optional.ofNullable(newUserDetails.getFirstName()).ifPresent(user::setFirstName);
+            Optional.ofNullable(newUserDetails.getLastName()).ifPresent(user::setLastName);
+            user.setAvailable(newUserDetails.isAvailable());
+            
+            logger.info("User updated successfully: {}", userName);
+            return userRepository.save(user);
+        } catch (IllegalArgumentException | UserNotFoundException e) {
+            logger.error("Error during user update: {}", e.getMessage(), e);
+            throw e;
+        } catch (Exception e) {
+            logger.error("Unexpected error during user update: {}", e.getMessage(), e);
+            throw new RuntimeException(e.getMessage(), e);
+        }
     }
 
     /**
@@ -237,28 +220,48 @@ public class UserService {
         }
     }
 
-    public void deleteUser(String id) {
-        userRepository.deleteById(id);
+    // TO CHANGE (ADD TOURNAMENTS )
+
+    /**
+     * Deletes a user from the database based on the username.
+     *
+     * @param userName the username of the user to be deleted
+     * @throws UserNotFoundException if no user with the username is found in the database
+     * @throws RuntimeException if there is an unexpected error during the deletion process
+     */
+    public void deleteUser(String userName) throws UserNotFoundException, RuntimeException {
+        try {
+            User user = userRepository.findByUserName(userName)
+                .orElseThrow(() -> new UserNotFoundException(userName));
+            userRepository.delete(user);
+            logger.info("User deleted successfully: {}", userName);
+        } catch (UserNotFoundException e) {
+            logger.error("User not found: {}", userName);
+            throw e;
+        } catch (Exception e) {
+            logger.error("Unexpected error during user deletion: {}", e.getMessage(), e);
+            throw new RuntimeException("Error deleting user", e);
+        }
     }
 
-    @Async("taskExecutor")
-    public CompletableFuture<User> authenticateUser(String username, String password) {
-        return CompletableFuture.supplyAsync(() -> {
-            logger.info("Attempting to authenticate user: {}", username);
-            Optional<User> userOptional = userRepository.findByUserName(username);
-            if (userOptional.isPresent()) {
-                User user = userOptional.get();
-                logger.info("User found: {}", username);
-                if (passwordEncoder.matches(password, user.getPassword())) {
-                    logger.info("Password matched for user: {}", username);
-                    return user;
-                } else {
-                    logger.info("Password mismatch for user: {}", username);
-                }
-            } else {
-                logger.info("User not found: {}", username);
-            }
-            return null;
-        });
-    }
+
+    // Used previously for OTP verification
+
+    //     /**
+    //  * Authenticates a user based on the provided username and password.
+    //  *
+    //  * @param username the username of the user to authenticate
+    //  * @param password the password to check against the stored password
+    //  * @return the authenticated User object if successful, null otherwise
+    //  */
+    // public User authenticateUser(String username, String password) {
+    //     Optional<User> userOptional = userRepository.findByUserName(username);
+    //     if (userOptional.isPresent()) {
+    //         User user = userOptional.get();
+    //         if (passwordEncoder.matches(password, user.getPassword())) {
+    //             return user;
+    //         }
+    //     }
+    //     return null;
+    // }
 }
