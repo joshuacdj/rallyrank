@@ -11,11 +11,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.backend.dto.ErrorResponse;
 import com.example.backend.dto.LoginUserDto;
 import com.example.backend.dto.RegisterUserDto;
 import com.example.backend.dto.VerifyUserDto;
+import com.example.backend.exception.EmailAlreadyExistsException;
 import com.example.backend.exception.UserNotEnabledException;
 import com.example.backend.exception.UserNotFoundException;
+import com.example.backend.exception.UsernameAlreadyExistsException;
 import com.example.backend.model.User;
 import com.example.backend.responses.LoginResponse;
 import com.example.backend.security.UserPrincipal;
@@ -38,9 +41,27 @@ public class AuthController {
     }
 
     @PostMapping("/user-signup")
-    public ResponseEntity<User> signup(@RequestBody RegisterUserDto registerUserDto) {
-        User registeredUser = authenticationService.signup(registerUserDto);
-        return ResponseEntity.ok(registeredUser);
+    public ResponseEntity<?> signup(@RequestBody RegisterUserDto registerUserDto) {
+        try {
+            User registeredUser = authenticationService.signup(registerUserDto);
+            return ResponseEntity.ok(registeredUser);
+        } catch (UsernameAlreadyExistsException e) {
+            logger.error("Signup error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("USERNAME_EXISTS", "The username is already taken."));
+        } catch (EmailAlreadyExistsException e) {
+            logger.error("Signup error: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("EMAIL_EXISTS", "The email address is already registered."));
+        } catch (IllegalArgumentException e) {
+            logger.error("Signup error: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                .body(new ErrorResponse("INVALID_INPUT", e.getMessage()));
+        } catch (Exception e) {
+            logger.error("Unexpected error during signup", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse("SERVER_ERROR", "An unexpected error occurred during signup."));
+        }
     
     }
 

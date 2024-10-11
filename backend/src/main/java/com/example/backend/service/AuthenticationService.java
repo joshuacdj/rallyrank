@@ -13,8 +13,10 @@ import org.springframework.stereotype.Service;
 import com.example.backend.dto.LoginUserDto;
 import com.example.backend.dto.RegisterUserDto;
 import com.example.backend.dto.VerifyUserDto;
+import com.example.backend.exception.EmailAlreadyExistsException;
 import com.example.backend.exception.UserNotEnabledException;
 import com.example.backend.exception.UserNotFoundException;
+import com.example.backend.exception.UsernameAlreadyExistsException;
 import com.example.backend.model.User;
 import com.example.backend.repository.UserRepository;
 import com.example.backend.responses.LoginResponse;
@@ -38,7 +40,14 @@ public class AuthenticationService {
         this.authenticationManager = authenticationManager;
     }
 
-    public User signup(RegisterUserDto registerUserDto) {
+    public User signup(RegisterUserDto registerUserDto) throws UsernameAlreadyExistsException, EmailAlreadyExistsException {
+        if (userRepository.existsByUsername(registerUserDto.getUsername())) {
+            throw new UsernameAlreadyExistsException("Username already exists");
+        }
+        if (userRepository.existsByEmail(registerUserDto.getEmail())) {
+            throw new EmailAlreadyExistsException("Email already exists");
+        }
+    
         User user = new User();
         user.setUsername(registerUserDto.getUsername());
         user.setEmail(registerUserDto.getEmail());
@@ -46,9 +55,9 @@ public class AuthenticationService {
         user.setVerificationCode(generateVerificationCode());
         user.setVerificationCodeExpiration(LocalDateTime.now().plusMinutes(15)); // 15 minutes
         user.setEnabled(false);
-
+    
         sendVerificationEmail(user);
-
+    
         return userRepository.save(user);
     }
 
