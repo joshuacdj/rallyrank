@@ -14,9 +14,11 @@ import com.example.backend.dto.LoginUserDto;
 import com.example.backend.dto.RegisterUserDto;
 import com.example.backend.dto.VerifyUserDto;
 import com.example.backend.exception.EmailAlreadyExistsException;
+import com.example.backend.exception.InvalidVerificationCodeException;
 import com.example.backend.exception.UserNotEnabledException;
 import com.example.backend.exception.UserNotFoundException;
 import com.example.backend.exception.UsernameAlreadyExistsException;
+import com.example.backend.exception.VerificationCodeExpiredException;
 import com.example.backend.model.User;
 import com.example.backend.repository.UserRepository;
 import com.example.backend.responses.LoginResponse;
@@ -85,25 +87,41 @@ public class AuthenticationService {
     }
 
     public void verifyUser(VerifyUserDto verifyUserDto) {
-        Optional<User> optionalUser = userRepository.findByUsername(verifyUserDto.getUsername());
+        // Optional<User> optionalUser = userRepository.findByUsername(verifyUserDto.getUsername());
 
-        if (optionalUser.isPresent()) {
-            User user = optionalUser.get();
-            if (user.getVerificationCodeExpiration().isBefore(LocalDateTime.now())) {
-                throw new RuntimeException("Verification code expired");
-            }
+        // if (optionalUser.isPresent()) {
+        //     User user = optionalUser.get();
+        //     if (user.getVerificationCodeExpiration().isBefore(LocalDateTime.now())) {
+        //         throw new RuntimeException("Verification code expired");
+        //     }
 
-            if (user.getVerificationCode().equals(verifyUserDto.getVerificationCode())) {
-                user.setEnabled(true);
-                user.setVerificationCode(null);
-                user.setVerificationCodeExpiration(null);
-                userRepository.save(user);
-            } else {
-                throw new RuntimeException("Verification code mismatch");
-            }
-        } else {
-            throw new UserNotFoundException(verifyUserDto.getUsername());
+        //     if (user.getVerificationCode().equals(verifyUserDto.getVerificationCode())) {
+        //         user.setEnabled(true);
+        //         user.setVerificationCode(null);
+        //         user.setVerificationCodeExpiration(null);
+        //         userRepository.save(user);
+        //     } else {
+        //         throw new RuntimeException("Verification code mismatch");
+        //     }
+        // } else {
+        //     throw new UserNotFoundException(verifyUserDto.getUsername());
+        // }
+
+        User user = userRepository.findByUsername(verifyUserDto.getUsername())
+        .orElseThrow(() -> new UserNotFoundException("User not found with username: " + verifyUserDto.getUsername()));
+
+        if (user.getVerificationCodeExpiration().isBefore(LocalDateTime.now())) {
+            throw new VerificationCodeExpiredException("Verification code has expired");
         }
+
+        if (!user.getVerificationCode().equals(verifyUserDto.getVerificationCode())) {
+            throw new InvalidVerificationCodeException("Invalid verification code");
+        }
+
+        user.setEnabled(true);
+        user.setVerificationCode(null);
+        user.setVerificationCodeExpiration(null);
+        userRepository.save(user);
 
     }
 

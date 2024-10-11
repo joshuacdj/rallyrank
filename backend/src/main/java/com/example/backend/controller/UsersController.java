@@ -26,7 +26,7 @@ public class UsersController {
 
     private static final Logger logger = LoggerFactory.getLogger(UsersController.class);
 
-    // Async health check endpoint to get all the users
+    // health check endpoint to get all the users
     @GetMapping
     ResponseEntity<?> getAllUsers() {
         try {
@@ -144,24 +144,6 @@ public class UsersController {
      * @throws UserNotFoundException if no user with the username is found in the database
      * @throws RuntimeException if there is an unexpected error during the update process
      */
-    // @PutMapping("/{username}/update")
-    // public ResponseEntity<?> updateUser(@PathVariable String username, @RequestBody User newUserDetails) {
-    //     try {
-    //         User updatedUser = userService.updateUser(username, newUserDetails);
-    //         logger.info("User updated successfully: {}", username);
-    //         return ResponseEntity.ok(updatedUser);
-    //     } catch (IllegalArgumentException e) {
-    //         logger.error("Validation errors during user update: {}", e.getMessage());
-    //         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
-    //     } catch (UserNotFoundException e) {
-    //         logger.error("User not found: {}", username);
-    //         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
-    //     } catch (Exception e) {
-    //         logger.error("Unexpected error updating user: {}", e.getMessage(), e);
-    //         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "An unexpected error occurred while updating the user!"));
-    //     }
-    // }
-
     @PutMapping("/{username}/update")
     public ResponseEntity<?> updateUser(@PathVariable String username, @RequestBody User newUserDetails) {
         try {

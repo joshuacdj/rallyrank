@@ -17,9 +17,11 @@ import com.example.backend.dto.LoginUserDto;
 import com.example.backend.dto.RegisterUserDto;
 import com.example.backend.dto.VerifyUserDto;
 import com.example.backend.exception.EmailAlreadyExistsException;
+import com.example.backend.exception.InvalidVerificationCodeException;
 import com.example.backend.exception.UserNotEnabledException;
 import com.example.backend.exception.UserNotFoundException;
 import com.example.backend.exception.UsernameAlreadyExistsException;
+import com.example.backend.exception.VerificationCodeExpiredException;
 import com.example.backend.model.User;
 import com.example.backend.responses.LoginResponse;
 import com.example.backend.security.UserPrincipal;
@@ -113,11 +115,32 @@ public class AuthController {
 
     @PostMapping("/user-verify")
     public ResponseEntity<?> verifyUser(@RequestBody VerifyUserDto verifyUserDto) {
+        // try {
+        //     authenticationService.verifyUser(verifyUserDto);
+        //     return ResponseEntity.ok("User verified successfully");
+        // } catch (RuntimeException e) {
+        //     return ResponseEntity.badRequest().body("Invalid verification code");
+        // }
+
         try {
             authenticationService.verifyUser(verifyUserDto);
             return ResponseEntity.ok("User verified successfully");
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body("Invalid verification code");
+        } catch (UserNotFoundException e) {
+            logger.error("User not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("USER_NOT_FOUND", "User not found"));
+        } catch (VerificationCodeExpiredException e) {
+            logger.error("Verification code expired: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("CODE_EXPIRED", "Verification code has expired"));
+        } catch (InvalidVerificationCodeException e) {
+            logger.error("Invalid verification code: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse("INVALID_CODE", "Invalid verification code"));
+        } catch (Exception e) {
+            logger.error("Unexpected error during user verification: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse("SERVER_ERROR", "An unexpected error occurred during user verification"));
         }
     }
 
