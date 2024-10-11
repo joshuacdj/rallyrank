@@ -5,7 +5,9 @@ import com.example.backend.repository.UserRepository;
 
 import jakarta.validation.constraints.NotNull;
 
+import com.example.backend.exception.EmailAlreadyExistsException;
 import com.example.backend.exception.UserNotFoundException;
+import com.example.backend.exception.UsernameAlreadyExistsException;
 
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -147,28 +149,18 @@ public class UserService {
      */
     public User updateUser(@NotNull String username, @NotNull User newUserDetails)
             throws UserNotFoundException, IllegalArgumentException, RuntimeException {
-        try {
-            User user = userRepository.findByUsername(username)
-                    .orElseThrow(() -> new UserNotFoundException(username));
 
-            Errors errors = new BeanPropertyBindingResult(newUserDetails, "user");
-            validator.validate(newUserDetails, errors);
+        User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new UserNotFoundException(username));
+        try {
 
             if (newUserDetails.getEmail() != null && !user.getEmail().equals(newUserDetails.getEmail())
                     && userRepository.existsByEmail(newUserDetails.getEmail())) {
-                errors.rejectValue("email", "duplicate.email", "Email already exists");
+                throw new EmailAlreadyExistsException("Email already exists");
             }
             if (newUserDetails.getUsername() != null && !user.getUsername().equals(newUserDetails.getUsername())
                     && userRepository.existsByUsername(newUserDetails.getUsername())) {
-                errors.rejectValue("username", "duplicate.username", "Username already exists");
-            }
-
-            if (errors.hasErrors()) {
-                List<String> errorMessages = errors.getAllErrors().stream()
-                        .map(error -> error.getDefaultMessage())
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.toList());
-                throw new IllegalArgumentException(String.join(", ", errorMessages));
+                throw new UsernameAlreadyExistsException("Username already exists");
             }
 
             // Update only non-null fields
@@ -187,12 +179,12 @@ public class UserService {
             
             logger.info("User updated successfully: {}", username);
             return userRepository.save(user);
-        } catch (IllegalArgumentException | UserNotFoundException e) {
-            logger.error("Error during user update: {}", e.getMessage(), e);
+        } catch (EmailAlreadyExistsException | UsernameAlreadyExistsException e) {
+            logger.error("Error during user update: {}", e.getMessage());
             throw e;
         } catch (Exception e) {
             logger.error("Unexpected error during user update: {}", e.getMessage(), e);
-            throw new RuntimeException(e.getMessage(), e);
+            throw new RuntimeException("An unexpected error occurred during user update", e);
         }
     }
 

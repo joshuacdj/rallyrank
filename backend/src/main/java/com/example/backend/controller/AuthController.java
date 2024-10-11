@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -65,6 +66,25 @@ public class AuthController {
     
     }
 
+    // @PostMapping("/user-login")
+    // public ResponseEntity<?> login(@RequestBody LoginUserDto loginUserDto) {
+    //     try {
+    //         UserPrincipal authenticatedUser = authenticationService.authenticate(loginUserDto);
+    //         String jwtToken = jwtService.generateToken(authenticatedUser);
+    //         LoginResponse loginResponse = new LoginResponse(jwtToken, jwtService.getJwtExpiration());
+    //         return ResponseEntity.ok(loginResponse);
+    //     } catch (UserNotFoundException e) {
+    //         logger.error("User not found: {}", e.getMessage());
+    //         return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+    //     } catch (UserNotEnabledException e) {
+    //         logger.error("User not enabled: {}", e.getMessage());
+    //         return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Your account is not enabled. Please check your email to enable your account.");
+    //     } catch (Exception e) {
+    //         logger.error("Error occurred during login", e);
+    //         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred during login");
+    //     }
+    // }
+
     @PostMapping("/user-login")
     public ResponseEntity<?> login(@RequestBody LoginUserDto loginUserDto) {
         try {
@@ -74,13 +94,20 @@ public class AuthController {
             return ResponseEntity.ok(loginResponse);
         } catch (UserNotFoundException e) {
             logger.error("User not found: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("USER_NOT_FOUND", "User not found"));
         } catch (UserNotEnabledException e) {
             logger.error("User not enabled: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Your account is not enabled. Please check your email to enable your account.");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ErrorResponse("USER_NOT_ENABLED", "Your account is not enabled. Please check your email to enable your account."));
+        } catch (BadCredentialsException e) {
+            logger.error("Bad credentials: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorResponse("INVALID_CREDENTIALS", "Invalid password"));
         } catch (Exception e) {
             logger.error("Error occurred during login", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred during login");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse("SERVER_ERROR", "An unexpected error occurred during login"));
         }
     }
 

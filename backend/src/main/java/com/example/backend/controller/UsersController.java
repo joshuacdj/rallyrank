@@ -1,9 +1,10 @@
 package com.example.backend.controller;
 
 import com.example.backend.service.UserService;
-
-
+import com.example.backend.dto.ErrorResponse;
+import com.example.backend.exception.EmailAlreadyExistsException;
 import com.example.backend.exception.UserNotFoundException;
+import com.example.backend.exception.UsernameAlreadyExistsException;
 import com.example.backend.model.User;
 
 import lombok.RequiredArgsConstructor;
@@ -143,21 +144,45 @@ public class UsersController {
      * @throws UserNotFoundException if no user with the username is found in the database
      * @throws RuntimeException if there is an unexpected error during the update process
      */
+    // @PutMapping("/{username}/update")
+    // public ResponseEntity<?> updateUser(@PathVariable String username, @RequestBody User newUserDetails) {
+    //     try {
+    //         User updatedUser = userService.updateUser(username, newUserDetails);
+    //         logger.info("User updated successfully: {}", username);
+    //         return ResponseEntity.ok(updatedUser);
+    //     } catch (IllegalArgumentException e) {
+    //         logger.error("Validation errors during user update: {}", e.getMessage());
+    //         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+    //     } catch (UserNotFoundException e) {
+    //         logger.error("User not found: {}", username);
+    //         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+    //     } catch (Exception e) {
+    //         logger.error("Unexpected error updating user: {}", e.getMessage(), e);
+    //         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "An unexpected error occurred while updating the user!"));
+    //     }
+    // }
+
     @PutMapping("/{username}/update")
     public ResponseEntity<?> updateUser(@PathVariable String username, @RequestBody User newUserDetails) {
         try {
             User updatedUser = userService.updateUser(username, newUserDetails);
-            logger.info("User updated successfully: {}", username);
             return ResponseEntity.ok(updatedUser);
-        } catch (IllegalArgumentException e) {
-            logger.error("Validation errors during user update: {}", e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
         } catch (UserNotFoundException e) {
-            logger.error("User not found: {}", username);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", e.getMessage()));
+            logger.error("User not found: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse("USER_NOT_FOUND", "User not found"));
+        } catch (EmailAlreadyExistsException e) {
+            logger.error("Email already exists: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("EMAIL_EXISTS", "Email already exists"));
+        } catch (UsernameAlreadyExistsException e) {
+            logger.error("Username already exists: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse("USERNAME_EXISTS", "Username already exists"));
         } catch (Exception e) {
-            logger.error("Unexpected error updating user: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", "An unexpected error occurred while updating the user!"));
+            logger.error("Unexpected error during user update: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse("SERVER_ERROR", "An unexpected error occurred during user update"));
         }
     }
 
