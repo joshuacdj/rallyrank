@@ -2,6 +2,7 @@ package com.example.backend.service;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -19,7 +20,9 @@ import com.example.backend.exception.UserNotEnabledException;
 import com.example.backend.exception.UserNotFoundException;
 import com.example.backend.exception.UsernameAlreadyExistsException;
 import com.example.backend.exception.VerificationCodeExpiredException;
+import com.example.backend.model.Admin;
 import com.example.backend.model.User;
+import com.example.backend.repository.AdminRepository;
 import com.example.backend.repository.UserRepository;
 import com.example.backend.responses.LoginResponse;
 import com.example.backend.security.UserPrincipal;
@@ -29,14 +32,16 @@ import jakarta.mail.MessagingException;
 @Service
 public class AuthenticationService {
 
+    private final AdminRepository adminRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final AuthenticationManager authenticationManager;
 
     @Autowired
-    public AuthenticationService(UserRepository userRepository, PasswordEncoder passwordEncoder, EmailService emailService, AuthenticationManager authenticationManager) {
+    public AuthenticationService(UserRepository userRepository, AdminRepository adminRepository, PasswordEncoder passwordEncoder, EmailService emailService, AuthenticationManager authenticationManager) {
         this.userRepository = userRepository;
+        this.adminRepository = adminRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
         this.authenticationManager = authenticationManager;
@@ -73,17 +78,38 @@ public class AuthenticationService {
     }
 
     public UserPrincipal authenticate(LoginUserDto loginUserDto) {
-        User user = userRepository.findByUsername(loginUserDto.getUsername())
-                    .orElseThrow(() -> new UserNotFoundException(loginUserDto.getUsername()));
+        // User user = userRepository.findByUsername(loginUserDto.getUsername())
+        //             .orElseThrow(() -> new UserNotFoundException(loginUserDto.getUsername()));
     
-        if (!user.isEnabled()) {
-            throw new UserNotEnabledException("Account not verified. Please check your email to enable your account.");
+        // if (!user.isEnabled()) {
+        //     throw new UserNotEnabledException("Account not verified. Please check your email to enable your account.");
+        // }
+    
+        // authenticationManager.authenticate(
+        //     new UsernamePasswordAuthenticationToken(loginUserDto.getUsername(), loginUserDto.getPassword()));
+    
+        // return UserPrincipal.create(user);
+
+        Optional<User> userOptional = userRepository.findByUsername(loginUserDto.getUsername());
+        Optional<Admin> adminOptional = adminRepository.findByAdminName(loginUserDto.getUsername());
+
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            if (!user.isEnabled()) {
+                throw new UserNotEnabledException("Account not verified. Please check your email to enable your account.");
+            }
+            authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(loginUserDto.getUsername(), loginUserDto.getPassword()));
+            return UserPrincipal.create(user);
+            
+        } else if (adminOptional.isPresent()) {
+            Admin admin = adminOptional.get();
+            authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(loginUserDto.getUsername(), loginUserDto.getPassword()));
+            return UserPrincipal.create(admin);
+        } else {
+            throw new UserNotFoundException(loginUserDto.getUsername());
         }
-    
-        authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(loginUserDto.getUsername(), loginUserDto.getPassword()));
-    
-        return UserPrincipal.create(user);
     }
 
     public void verifyUser(VerifyUserDto verifyUserDto) {
