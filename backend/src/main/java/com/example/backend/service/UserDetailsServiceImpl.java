@@ -11,8 +11,13 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
+    private static final Logger logger = LoggerFactory.getLogger(UserDetailsServiceImpl.class);
+
     @Autowired
     UserRepository userRepository;
 
@@ -22,7 +27,9 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     @Override
     @Transactional
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        logger.info("UserDetailsServiceImpl: Attempting to load user: " + username);
         User user = userRepository.findByUserName(username).orElse(null);
+        
 
         // If user is found, return the user details
         if (user != null) {
